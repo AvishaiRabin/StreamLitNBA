@@ -1,4 +1,10 @@
 import streamlit as st
 
-st.markdown("# Main page 🎈")
+from basketball_data.scoreboard import get_today_scoreboard
+
+st.markdown("# Welcome to Backboard!")
 st.sidebar.markdown("# Main page 🎈")
+
+st.text("A basketball project by Avi Rabin")
+
+st.dataframe(get_today_scoreboard())

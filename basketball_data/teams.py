@@ -1,35 +1,26 @@
+import streamlit as st
 import pandas as pd
-from nba_api.stats.endpoints import TeamGameLog
-from python_funcs.sql_helper import get_db_connection
 
+from nba_api.stats.endpoints import TeamGameLog, teamestimatedmetrics, leaguestandingsv3, teamestimatedmetrics
+from nba_api.live.nba.endpoints import scoreboard
+from nba_api.stats.static import teams
 
-def get_all_teams():
-    """Fetches all teams from the 'teams' table and returns a DataFrame."""
-    # Establishing a connection to the database
-    conn = get_db_connection('teams')
-    try:
-        # Creating a cursor
-        cursor = conn.cursor()
+@st.cache_data
+def get_standings(year):
+    """
+    Query's a given season's standings (defaults to the current one)
+    """
+    standings = leaguestandingsv3.LeagueStandingsV3(season=year).get_data_frames()[0]
 
-        # Executing the query
-        cursor.execute("SELECT * FROM teams")
+    standings = standings[['TeamName', 'Conference', 'PlayoffRank', 'Division', 'Record', 'L10', 'ConferenceGamesBack']]
 
-        # Fetching all rows
-        rows = cursor.fetchall()
+    return standings
 
-        # Getting column names from cursor description
-        columns = [col[0] for col in cursor.description]
+@st.cache_data
+def get_teams():
+    return pd.DataFrame(teams.get_teams())
 
-        # Creating DataFrame
-        df = pd.DataFrame(rows, columns=columns)
-
-        return df
-
-    finally:
-        # Close the connection
-        conn.close()
-
-
+@st.cache_data
 def get_team_logs_by_year(year=2023):
     """
     Fetches team game logs for the specified year (or all available years) and returns a DataFrame.
@@ -41,7 +32,7 @@ def get_team_logs_by_year(year=2023):
         pd.DataFrame: DataFrame containing team game logs.
     """
     # Call the function to fetch all teams
-    teams_df = get_all_teams()
+    teams_df = get_teams()
     final_teams_data = pd.DataFrame()
 
     for team_id in teams_df['id']:
@@ -57,17 +48,22 @@ def get_team_logs_by_year(year=2023):
 
     return final_teams_data
 
-def get_league_stats():
-    conn = get_db_connection('team_logs')
-    league_stats = conn.execute('SELECT W, W + L as Games_Played, nickname FROM team_logs',
-                               ).fetchall()
-    league_data = []
-    for row in league_stats:
-        league_data.append({
-            'Wins': row[0],
-            'Games': row[1],
-            'Team': row[2]
-            # Add more columns as needed
-        })
-    conn.close()
-    return league_data
+@st.cache_data
+def get_team_metrics(season):
+    """
+    Query's a given season's team ratings.  E.g. returns a list of teams and their OFFRTG, DEFTG, NETRTG, etc
+    """
+    season = season[:5] + season[7:]
+    tbl = teamestimatedmetrics.TeamEstimatedMetrics(league_id='00', season=season).get_data_frames()[0]
+
+    tbl = tbl[['TEAM_NAME', 'E_OFF_RATING', 'E_DEF_RATING', 'E_NET_RATING', 'E_PACE', 'E_AST_RATIO', 'E_OREB_PCT_RANK',
+         'E_DREB_PCT_RANK', 'E_REB_PCT_RANK', 'E_TM_TOV_PCT_RANK']]
+
+    tbl.columns = [
+        'Team', 'Offensive Rating', 'Defensive Rating', 'Net Rating', 'Pace Rating', 'Assist to Turnover Ratio',
+        'Offensive Rebound Ranking', 'Defensive Rebound Ranking', 'Rebound Ranking', 'Turnovers Ranking'
+    ]
+
+    # tbl = pd.merge(tbl, teams, on='TEAM_ID')
+
+    return tbl
