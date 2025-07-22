@@ -54,11 +54,21 @@ def get_today_scoreboard():
     Query's a selection of live games / upcoming games.
     """
 
-    board = scoreboard.ScoreBoard()
+    games = []
+
+    # Set a 30 day limit in case season is done
+
+    limit = 30
+
+    while len(games) == 0 or limit == 0:
+
+        board = scoreboard.ScoreBoard()
+
+        games = board.games.get_dict()
+
+        limit -= 1
 
     todays_scoreboard = pd.DataFrame()
-
-    games = board.games.get_dict()
 
     for game in games:
         this_game = {

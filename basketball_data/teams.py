@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from nba_api.stats.endpoints import TeamGameLog, teamestimatedmetrics, leaguestandingsv3, teamestimatedmetrics
+from nba_api.stats.endpoints import TeamGameLog, teamestimatedmetrics, leaguestandingsv3, teamestimatedmetrics, LeagueDashTeamStats
 from nba_api.live.nba.endpoints import scoreboard
 from nba_api.stats.static import teams
 
@@ -21,7 +21,39 @@ def get_teams():
     return pd.DataFrame(teams.get_teams())
 
 @st.cache_data
-def get_team_logs_by_year(year=2023):
+def get_team_stats(year, game_type):
+    """
+    Fetches team stat rankings by year.
+    Includes:",PTS",REB",AST",STL",FG_PCT",FT_PCT",FG3_PCT",BLK
+
+    Args:
+        year
+        game_type
+
+    Returns:
+        list[pd.DataFrame]: list of DataFrames for each metric
+    """
+    season = f"{str(year)}-{(str(year+1))[2:]}"
+
+    print(season)
+
+    team_stats = LeagueDashTeamStats(
+        season=season,
+        per_mode_detailed='PerGame',
+        season_type_all_star=game_type
+    )
+
+    df = team_stats.get_data_frames()[0]
+    print(df.head())
+    df = df[['TEAM_NAME', 'W', 'L', 'FGM', 'FGA',
+             'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT', 'OREB',
+             'DREB', 'REB', 'AST', 'TOV', 'STL', 'BLK', 'BLKA', 'PF', 'PFD', 'PTS',
+             'PLUS_MINUS']]
+
+    return df
+
+@st.cache_data
+def get_team_logs_by_year(year=2024):
     """
     Fetches team game logs for the specified year (or all available years) and returns a DataFrame.
 
