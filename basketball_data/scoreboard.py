@@ -68,7 +68,6 @@ def get_today_scoreboard():
     limit = 30
 
     while len(games) == 0 or limit == 0:
-
         board = scoreboard.ScoreBoard()
 
         games = board.games.get_dict()

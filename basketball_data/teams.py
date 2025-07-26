@@ -108,7 +108,6 @@ def get_team_logs_by_year(year=2024):
     final_teams_data = pd.DataFrame()
 
     for team_id in teams_df["id"]:
-
         team_log = TeamGameLog(team_id, season=year).get_data_frames()[0]
         # Merge team game log with teams DataFrame
         team_log = pd.merge(team_log, teams_df, left_on="Team_ID", right_on="id")
