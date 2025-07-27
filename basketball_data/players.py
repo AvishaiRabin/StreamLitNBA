@@ -15,6 +15,19 @@ def get_players(active: bool = True):
 
 
 @st.cache_data
+def get_player_seasons(player_id: int):
+    """Takes a player ID and returns the seasons they've played"""
+    career_stats = playercareerstats.PlayerCareerStats(player_id=player_id)
+
+    # Get the data as a pandas DataFrame
+    career_stats_df = career_stats.get_data_frames()[0]
+
+    season_list = [i for i in career_stats_df["SEASON_ID"].unique()]
+
+    return season_list
+
+
+@st.cache_data
 def get_player_career_stats(player_id: int):
     """Takes a player ID and returns their career states"""
     career_stats = playercareerstats.PlayerCareerStats(player_id=player_id)
@@ -66,16 +79,14 @@ def get_player_career_stats(player_id: int):
 
 
 @st.cache_data
-def get_season_stats(
-    season_list: list,
-    stat: str,
-    per_mode: str = "PerGame",
-    season_type: str = "Regular Season",
+def compare_season_stats(
+    player_name: str, season_list: list, stat: str, per_mode: str, season_type: str
 ):
     """
     Collects ntile values of season stats.
 
     Args:
+        player_name: Player name to compare against
         season_list: A list of seasons (e.g. ['2023-24', '2024-25'])
         stat: The stat we are examining (e.g. 'PTS')
         per_mode: E.g. PerGame, Per36, Totals
@@ -83,7 +94,7 @@ def get_season_stats(
 
     Returns a DataFrame of season and 0.1, 0.25, 0.5, 0.75, 0.9, max
     """
-    ppg_df = pd.DataFrame(
+    ntile_df = pd.DataFrame(
         columns=[
             "Season",
             "10th Percentile",
@@ -92,21 +103,25 @@ def get_season_stats(
             "75th percentile",
             "90th percentile",
             "Best in the League",
+            player_name,
         ]
     )
 
     for season in season_list:
         # Fetch league-wide player stats for the season
-        league_stats = leaguedashplayerstats.LeagueDashPlayerStats(
-            season=season,
-            per_mode_detailed=per_mode,  # or 'Totals', 'Per36', etc.
-            season_type_all_star=season_type,
-        ).get_data_frames()[0]
+        league_stats = pd.read_parquet(
+            f"static/data/seasons/players/{season}/{season_type}/{per_mode}.parquet"
+        )
 
-        ppg = league_stats[stat]
+        # Get player-specific stat first
+        player_stat = league_stats[league_stats["PLAYER_NAME"] == player_name][
+            stat
+        ].iloc[0]
+
+        stat_df = league_stats[stat]
 
         # Get quantiles
-        ppgq = ppg.quantile([0.1, 0.25, 0.5, 0.75, 0.9, 1.0])
-        ppg_df.loc[len(ppg_df)] = [season] + [i for i in ppgq]
+        stat_df_q = stat_df.quantile([0.1, 0.25, 0.5, 0.75, 0.9, 1.0])
+        ntile_df.loc[len(ntile_df)] = [season] + [i for i in stat_df_q] + [player_stat]
 
-    return ppg_df
+    return ntile_df
