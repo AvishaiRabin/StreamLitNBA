@@ -100,4 +100,3 @@ team_stats_styled = (
 
 
 st.dataframe(team_stats_styled)
-

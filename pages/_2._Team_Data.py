@@ -28,7 +28,6 @@ year = int(season[:4])
 metric = st.radio("Pick one:", ["None", "Standings", "Metrics"])
 
 if metric == "Standings":
-
     standings = get_standings(year)
 
     col1, col2 = st.columns(2)
