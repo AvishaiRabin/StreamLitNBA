@@ -17,46 +17,56 @@ st.write("Select a player")
 
 all_players = get_players()
 
-players = ["Select a player..."] + all_players["full_name"].tolist()
-player_name = st.selectbox("Select", players)
+col1, col2 = st.columns(2)
 
-season_type = st.radio("Game Mode:", ["Regular Season", "Playoffs"])
 
-per_mode = st.radio(
-    "Per Mode",
-    [
-        "PerGame",
-        "PerMinute",
-        "Per36",
-        "Per46",
-        "Per100Plays",
-        "Per100Possessions",
-        "PerPlay",
-        "PerPossession",
-        "Totals",
-    ],
-)
+with col1:
 
-stats = [
-    "FGM",
-    "FGA",
-    "FG_PCT",
-    "FG3M",
-    "FG3A",
-    "FG3_PCT",
-    "FTM",
-    "FTA",
-    "FT_PCT",
-    "OREB",
-    "DREB",
-    "REB",
-    "AST",
-    "TOV",
-    "STL",
-    "BLK",
-    "PF",
-    "PTS",
-]
+    players = ["Select a player..."] + all_players["full_name"].tolist()
+    player_name = st.selectbox("Select", players)
+
+    season_type = st.radio("Game Mode:", ["Regular Season", "Playoffs"])
+
+    per_mode = st.radio(
+        "Per Mode",
+        [
+            "PerGame",
+            "PerMinute",
+            "Per36",
+            "Per46",
+            "Per100Plays",
+            "Per100Possessions",
+            "PerPlay",
+            "PerPossession",
+            "Totals",
+        ],
+    )
+with col2:
+    stats_map = {
+        "PTS": "Points",
+        "REB": "Rebounds",
+        "OREB": "Offensive Rebounds",
+        "DREB": "Defensive Rebounds",
+        "AST": "Assists",
+        "STL": "Steals",
+        "BLK": "Blocks",
+        "PF": "Personal Fouls",
+        "TOV": "Turnovers",
+        "FGM": "Field Goals Made",
+        "FGA": "Field Goals Attempted",
+        "FG_PCT": "Field Goal Percent",
+        "FG3M": "3 Pointers Made",
+        "FG3A": "3 Pointers Attempted",
+        "FG3_PCT": "3 Point Shooting Percent",
+        "FTM": "Free Throws Made",
+        "FTA": "Free Throws Attempted",
+        "FT_PCT": "Free Throw Percent",
+    }
+
+    stat = st.radio("Stat to Analyze:", stats_map.keys())
+
+    print(stat)
+
 
 if player_name != "Select a player...":
     player_id = all_players[all_players["full_name"] == player_name]["id"].iloc[0]
@@ -64,7 +74,7 @@ if player_name != "Select a player...":
     season_list = get_player_seasons(player_id)
 
     season_compare_tbl = compare_season_stats(
-        player_name, season_list, "PTS", per_mode, season_type
+        player_name, season_list, stat, per_mode, season_type
     )
 
     hover = alt.selection_point(
@@ -72,20 +82,39 @@ if player_name != "Select a player...":
     )
 
     stat_df_long = season_compare_tbl.melt(
-        id_vars="Season", var_name="Percentile", value_name="Points"
+        id_vars="Season", var_name="Percentile", value_name=stats_map[stat]
     )
+
+    legend_order = season_compare_tbl.columns.tolist()[::-1]
 
     # Add hover selection
     hover = alt.selection_single(
         fields=["Season"], nearest=True, on="mouseover", empty="none", clear="mouseout"
     )
+
+    tooltip = [
+        alt.Tooltip("Season", title="Season"),
+        alt.Tooltip("Percentile", title="Percentile"),
+        alt.Tooltip(f"{stats_map[stat]}:Q", title=stats_map[stat], format=".1f"),
+    ]
+
+    color_scale = alt.Scale(domain=legend_order)  # explicitly set domain
+
+    color = alt.Color(
+        "Percentile:N",
+        title="Percentile",
+        scale=color_scale,
+        sort=legend_order,  # sort here helps too, but domain is key
+    )
+
     line = (
         alt.Chart(stat_df_long)
         .mark_line()
         .encode(
             x=alt.X("Season:O", title="Season"),
-            y=alt.Y("Points:Q", title=f"Points {re.sub('Per', 'Per ', per_mode)}"),
-            color=alt.Color("Percentile:N", title="Percentile"),
+            y=alt.Y(f"{stats_map[stat]}:Q", title=f"{stats_map[stat]} {re.sub('Per', 'Per ', per_mode)}"),
+            color=color,
+            tooltip=tooltip
         )
     )
 
@@ -98,21 +127,29 @@ if player_name != "Select a player...":
         .add_params(hover)
     )
 
-    points = (
+    chart = (
         alt.Chart(stat_df_long)
         .mark_circle()
-        .encode(x="Season:O", y="Points:Q", color="Percentile:N")
+        .encode(x="Season:O", y=f"{stats_map[stat]}:Q", color=color, tooltip=tooltip)
         .transform_filter(hover)
     )
+
+    shape = alt.Shape(
+        "Percentile:N",
+        scale=alt.Scale(domain=["Best in the League"], range=["diamond"]),
+        legend=None  # hide extra legend if desired
+    )
+
+    chart = chart.encode(shape=shape)
 
     text = (
         alt.Chart(stat_df_long)
         .mark_text(align="left", dx=5, dy=-5)
         .encode(
             x="Season:O",
-            y="Points:Q",
-            text=alt.Text("Points:Q", format=".1f"),
-            color="Percentile:N",
+            y=f"{stats_map[stat]}:Q",
+            text=alt.Text(f"{stats_map[stat]}:Q", format=".1f"),
+            color=color,
         )
         .transform_filter(hover)
     )
@@ -126,8 +163,8 @@ if player_name != "Select a player...":
         .transform_filter(hover)
     )
 
-    chart = alt.layer(line, selectors, points, rule, text).properties(
-        width=700, height=400, title="Percentiles of Points Per Game by Season"
+    chart = alt.layer(line, selectors, chart, rule, text).properties(
+        width=1000, height=500, title=f"Percentiles of {stats_map[stat]} {re.sub('Per', 'Per ', per_mode)} by Season"
     )
 
     st.altair_chart(chart, use_container_width=True)
