@@ -55,10 +55,14 @@ def get_team_stats(season, game_type):
     season = season[:5] + season[7:]
 
     team_stats = LeagueDashTeamStats(
-        season=season, per_mode_detailed="PerGame", season_type_all_star=game_type
+        season=season,
+        per_mode_detailed="PerGame",
+        season_type_all_star=game_type,
     )
 
     df = team_stats.get_data_frames()[0]
+
+    df = df[df['TEAM_ID'].isin(get_teams()['id'])]
 
     df = df[
         [
@@ -88,6 +92,7 @@ def get_team_stats(season, game_type):
             "PLUS_MINUS",
         ]
     ]
+
 
     return df
 

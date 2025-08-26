@@ -81,9 +81,11 @@ if player_name != "Select a player...":
         name="hover", fields=["Season"], nearest=True, on="mouseover", clear="mouseout"
     )
 
+
     stat_df_long = season_compare_tbl.melt(
         id_vars="Season", var_name="Percentile", value_name=stats_map[stat]
     )
+    stat_df_long["Player"] = player_name
 
     legend_order = season_compare_tbl.columns.tolist()[::-1]
 
@@ -93,8 +95,9 @@ if player_name != "Select a player...":
     )
 
     tooltip = [
-        alt.Tooltip("Season", title="Season"),
-        alt.Tooltip("Percentile", title="Percentile"),
+        alt.Tooltip("Player:N", title="Player"),
+        alt.Tooltip("Season:O", title="Season"),
+        alt.Tooltip("Percentile:N", title="Percentile"),
         alt.Tooltip(f"{stats_map[stat]}:Q", title=stats_map[stat], format=".1f"),
     ]
 
@@ -112,9 +115,12 @@ if player_name != "Select a player...":
         .mark_line()
         .encode(
             x=alt.X("Season:O", title="Season"),
-            y=alt.Y(f"{stats_map[stat]}:Q", title=f"{stats_map[stat]} {re.sub('Per', 'Per ', per_mode)}"),
+            y=alt.Y(
+                f"{stats_map[stat]}:Q",
+                title=f"{stats_map[stat]} {re.sub('Per', 'Per ', per_mode)}",
+            ),
             color=color,
-            tooltip=tooltip
+            tooltip=tooltip,
         )
     )
 
@@ -123,21 +129,27 @@ if player_name != "Select a player...":
         .mark_rule(opacity=0)
         .encode(
             x="Season:O",
+            tooltip=tooltip,  # ✅ full tooltip here
+
         )
         .add_params(hover)
     )
 
     chart = (
         alt.Chart(stat_df_long)
-        .mark_circle()
-        .encode(x="Season:O", y=f"{stats_map[stat]}:Q", color=color, tooltip=tooltip)
-        .transform_filter(hover)
+        .mark_circle(size=70)
+        .encode(
+            x="Season:O",
+            y=f"{stats_map[stat]}:Q",
+            color=color,
+            tooltip=tooltip,  # this now shows everything
+        )
     )
 
     shape = alt.Shape(
         "Percentile:N",
         scale=alt.Scale(domain=["Best in the League"], range=["diamond"]),
-        legend=None  # hide extra legend if desired
+        legend=None,  # hide extra legend if desired
     )
 
     chart = chart.encode(shape=shape)
@@ -164,7 +176,9 @@ if player_name != "Select a player...":
     )
 
     chart = alt.layer(line, selectors, chart, rule, text).properties(
-        width=1000, height=500, title=f"Percentiles of {stats_map[stat]} {re.sub('Per', 'Per ', per_mode)} by Season"
+        width=1000,
+        height=500,
+        title=f"Percentiles of {stats_map[stat]} {re.sub('Per', 'Per ', per_mode)} by Season",
     )
 
     st.altair_chart(chart, use_container_width=True)
