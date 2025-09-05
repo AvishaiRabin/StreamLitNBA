@@ -7,6 +7,8 @@ from nba_api.stats.endpoints import (
     leaguestandingsv3,
     teamestimatedmetrics,
     LeagueDashTeamStats,
+    CommonTeamRoster
+
 )
 from nba_api.live.nba.endpoints import scoreboard
 from nba_api.stats.static import teams
@@ -37,6 +39,24 @@ def get_standings(year):
 @st.cache_data
 def get_teams():
     return pd.DataFrame(teams.get_teams())
+
+@st.cache_data
+def get_team_roster(team_name: str, season: str = '2024-25'):
+    """ Takes as input a team name and returns all players who played for that team in a given season"""
+    teams = get_teams()
+    team_id = teams[teams['full_name'] == team_name]['id'].iloc[0]
+
+    # Query the CommonTeamRoster endpoint
+    ctro = CommonTeamRoster(
+        team_id=team_id,
+        league_id_nullable='00',
+        season='2024-25'
+    )
+
+    roster = ctro.get_data_frames()[0]
+
+    return roster
+
 
 
 @st.cache_data

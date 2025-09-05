@@ -8,6 +8,7 @@ from basketball_data.players import (
     get_player_career_stats,
     compare_season_stats,
     get_player_seasons,
+    get_player_teams
 )
 
 st.markdown("# Player Trend Visualizer")
@@ -64,8 +65,6 @@ with col2:
     }
 
     stat = st.radio("Stat to Analyze:", stats_map.keys())
-
-    print(stat)
 
 
 if player_name != "Select a player...":

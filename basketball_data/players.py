@@ -28,6 +28,14 @@ def get_player_seasons(player_id: int):
 
 
 @st.cache_data
+def get_player_teams(player_id: int, season: str):
+    """ Takes a player ID and returns the teams they played on each year """
+    career_stats = playercareerstats.PlayerCareerStats(player_id=player_id).get_data_frames()[0].reset_index()
+    career_stats = career_stats[['TEAM_ID', 'TEAM_ABBREVIATION', 'SEASON_ID']]
+    career_stats = career_stats[(career_stats['SEASON_ID']==season)&(career_stats['TEAM_ABBREVIATION']!='TOT')]
+    return career_stats
+
+@st.cache_data
 def get_player_career_stats(player_id: int):
     """Takes a player ID and returns their career states"""
     career_stats = playercareerstats.PlayerCareerStats(player_id=player_id)
